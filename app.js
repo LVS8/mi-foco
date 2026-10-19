@@ -105,7 +105,9 @@ function go(view) {
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + view));
   document.querySelectorAll('.nav button').forEach((b) => b.classList.toggle('active', b.dataset.go === view));
   window.scrollTo(0, 0);
+  if (view === 'history') renderMoney();
 }
+window.addEventListener('resize', () => { if ($('#view-history').classList.contains('active')) renderMoney(); });
 
 /* ---------- Pintar ---------- */
 function setAvatar(el) {
@@ -273,6 +275,10 @@ function dayLabel(k) {
 const hasLog = (k) => S.log[k] && (S.log[k].progress || S.log[k].obstacles || S.log[k].mood);
 
 function renderHistory() {
+  const ht = S.htab || 'money';
+  document.querySelectorAll('#hseg [data-htab]').forEach((b) => b.classList.toggle('on', b.dataset.htab === ht));
+  document.querySelectorAll('.hpane').forEach((p) => p.classList.toggle('active', p.dataset.pane === ht));
+
   // Resumen de los últimos 7 días
   const week = [];
   for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); week.push(dayKey(d)); }
@@ -334,7 +340,8 @@ function renderMoney() {
   const raw = top / 3, p = 10 ** Math.floor(Math.log10(raw));
   const step = [1, 2, 2.5, 5, 10].find((m) => m * p >= raw) * p;
   const yMax = step * Math.ceil(top / step);
-  const W = 340, H = 170, L = 36, R = 6, T = 10, B = 22, pw = W - L - R, ph = H - T - B;
+  const cw = $('#chart').clientWidth, chh = $('#chart').clientHeight;
+  const W = 340, H = cw && chh ? Math.max(120, Math.round((W * chh) / cw)) : 170, L = 36, R = 6, T = 10, B = 22, pw = W - L - R, ph = H - T - B;
   const bw = pw / days.length, x = (i) => L + bw * i + bw / 2, y = (v) => T + ph - (v / yMax) * ph;
   const short = (v) => (v >= 1000 ? `${(v / 1000).toLocaleString('es-ES', { maximumFractionDigits: 1 })}k` : Math.round(v)) + ' €';
 
@@ -543,6 +550,9 @@ $('#doneWrap').addEventListener('toggle', (e) => { doneOpen = e.target.open; }, 
 document.addEventListener('click', (e) => {
   const nav = e.target.closest('[data-go]');
   if (nav) return go(nav.dataset.go);
+
+  const ht = e.target.closest('[data-htab]');
+  if (ht) { S.htab = ht.dataset.htab; save(); renderHistory(); return renderMoney(); }
 
   const tab = e.target.closest('[data-tab]');
   if (tab) { S.tab = tab.dataset.tab; save(); return renderTasks(); }

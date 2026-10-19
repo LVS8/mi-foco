@@ -1,5 +1,5 @@
 // Guarda la app para que funcione sin conexión
-const CACHE = 'mi-foco-v9';
+const CACHE = 'mi-foco-v11';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

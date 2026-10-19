@@ -379,3 +379,113 @@ b.got::before { background: var(--got); }
   #view-home .card { padding: 10px 12px; margin-bottom: 8px; }
   #view-home .top { margin-bottom: 6px; }
 }
+
+
+/* ===== Cada página ocupa justo el alto de la pantalla ===== */
+html, body { height: 100%; overflow: hidden; }
+#app {
+  height: 100vh; height: 100dvh;
+  display: flex; flex-direction: column;
+  padding: calc(12px + env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom));
+}
+.view.active { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+.view > *, .hpane > * { margin-top: 0 !important; margin-bottom: 0 !important; flex-shrink: 0; }
+.view .card { margin-bottom: 0 !important; }
+.top { margin: 0 2px !important; min-height: 38px; }
+.top-title { font-size: 1.4rem; }
+.scroll { flex: 1 1 0 !important; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -6px !important; padding: 2px 6px 10px; -webkit-overflow-scrolling: touch; }
+.grow { flex: 1 1 0 !important; min-height: 0; display: flex; flex-direction: column; }
+.grow > * { flex-shrink: 0; }
+
+/* Inicio: la tarjeta principal y la siguiente tarea llenan el hueco */
+#view-home .hero { flex: 3 1 auto !important; display: flex; flex-direction: column; justify-content: space-evenly; gap: 6px; }
+#view-home .hero-row .avatar.big { flex-basis: clamp(52px, 8vh, 76px); width: clamp(52px, 8vh, 76px); height: clamp(52px, 8vh, 76px); font-size: clamp(28px, 4.4vh, 42px); }
+#view-home .hero-goal { font-size: clamp(1.1rem, 2.6vh, 1.45rem); }
+#view-home .pct { font-size: clamp(2.4rem, 9vh, 5rem); margin-top: 0; }
+#view-home .pct small { font-size: .45em; }
+#view-home .bar { height: clamp(10px, 1.6vh, 14px); margin-top: 0; }
+#view-home .next { flex: 1 1 auto !important; display: flex; flex-direction: column; justify-content: center; }
+
+/* Tareas */
+#view-tasks .segmented, #view-history .segmented { margin: 0 !important; }
+#view-tasks .hint { margin: -2px 4px !important; font-size: .82rem; }
+
+/* Enfoque */
+#view-focus .compact .task { padding: 8px 10px; }
+#view-focus .tasks.compact { gap: 6px; }
+#view-focus .card h3 { margin-bottom: 8px; }
+#view-focus .grow .add { margin-bottom: 8px; }
+#view-focus .grow .scroll { margin: 0 -4px !important; padding: 0 4px 4px; }
+.thief { padding: 8px 10px; }
+.chips { margin-top: 6px; }
+.diary { position: relative; }
+.diary .saved-note { position: absolute; top: 16px; right: 16px; margin: 0; }
+.diary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.diary-grid .lbl { margin: 0; font-size: .8rem; }
+.diary-grid textarea { margin: 4px 0 0; resize: none; font-size: .9rem; padding: 8px 10px; }
+.moods button { font-size: 1.4rem; padding: 6px 4px; }
+
+/* Historial */
+.hpane { display: none; }
+.hpane.active { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+#todayNeed h3 { margin-bottom: 6px; }
+.need-nums b { font-size: 1.35rem; }
+.need-bar { margin: 8px 0 6px; }
+.need-msg { margin-bottom: 10px; font-size: .82rem; }
+#todayNeed .btn.block { padding: 10px; }
+.chart { flex: 1 1 0; min-height: 0; }
+.chart svg { height: 100%; }
+.chart-note { margin-top: 6px !important; }
+
+@media (max-height: 700px) {
+  .view.active, .hpane.active { gap: 8px; }
+  .moods button small { display: none; }
+  #view-focus .card, #view-history .card { padding: 12px; }
+  .need-msg { display: none; }
+  .chart-note { display: none; }
+}
+
+/* Ajustes finos */
+#app { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
+#view-focus .compact .task .icon { display: none; }
+#view-focus .compact .task .t-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .92rem; }
+#view-focus .compact .task { padding: 7px 10px; }
+#view-focus .grow { min-height: 130px; }
+@media (max-height: 700px) {
+  #view-home .hero { padding: 12px 14px; gap: 4px; }
+  #view-home .pct { font-size: 2.2rem; }
+  #view-home .stat { padding: 7px 6px; }
+  #view-home .money-card { padding: 8px 12px; }
+  #view-home .money-card .btn { padding: 8px 12px; }
+  #view-home .pace-nums div { padding: 4px; }
+  #view-home .pace-top { margin-bottom: 6px; }
+  #view-home .card { padding: 10px 12px; }
+  .diary-grid textarea { height: 44px; }
+}
+@media (max-height: 700px) {
+  .top { min-height: 32px; }
+  .top-title { font-size: 1.25rem; }
+  #view-focus .card h3 { margin-bottom: 6px; font-size: .98rem; }
+  #view-focus .compact .task { padding: 4px 10px; }
+  #view-focus .compact .check { flex-basis: 24px; height: 24px; }
+  #view-focus .tasks.compact { gap: 5px; }
+  .moods button { font-size: 1.15rem; padding: 4px; }
+  .diary-grid textarea { height: 38px; padding: 6px 8px; }
+  #view-focus .grow .add input { padding: 9px 12px; }
+  #view-focus .grow { min-height: 110px; }
+}
+/* Enfoque compacto también en móviles de altura media */
+@media (max-height: 860px) {
+  #view-focus .card h3 { margin-bottom: 6px; }
+  #view-focus .compact .task { padding: 5px 10px; }
+  #view-focus .compact .check { flex-basis: 24px; height: 24px; }
+  #view-focus .tasks.compact { gap: 5px; }
+  .moods button { font-size: 1.2rem; padding: 4px; }
+  .moods button small { font-size: .68rem; }
+  .diary-grid textarea { height: 40px; padding: 6px 8px; }
+  #view-focus .grow .add input { padding: 10px 12px; }
+}
+@media (max-height: 860px) {
+  .moods button small { display: none; }
+  #view-focus .card { padding: 12px 14px; }
+}

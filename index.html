@@ -70,8 +70,10 @@
         <button class="btn primary" aria-label="Añadir">＋</button>
       </form>
 
-      <ul class="tasks" id="taskList"></ul>
-      <div id="doneWrap"></div>
+      <div class="scroll">
+        <ul class="tasks" id="taskList"></ul>
+        <div id="doneWrap"></div>
+      </div>
     </section>
 
     <!-- ENFOQUE -->
@@ -83,17 +85,16 @@
         <ul class="tasks compact" id="top3"></ul>
       </div>
 
-      <div class="card">
-        <h3>🕳️ Ladrones de tiempo</h3>
-        <p class="sub">Cosas que haces y no te acercan al objetivo. ¿Qué haces con ellas?</p>
+      <div class="card grow">
+        <h3>🕳️ Ladrones de tiempo <small class="date">lo que no te acerca</small></h3>
         <form class="add" id="addThief" autocomplete="off">
           <input id="newThief" placeholder="Ej: ver vídeos sin parar…" maxlength="120">
           <button class="btn primary" aria-label="Añadir">＋</button>
         </form>
-        <ul class="thieves" id="thieves"></ul>
+        <div class="scroll"><ul class="thieves" id="thieves"></ul></div>
       </div>
 
-      <div class="card">
+      <div class="card diary">
         <h3>📝 Diario de hoy <small class="date" id="todayDate"></small></h3>
         <div class="moods" id="moods">
           <button data-mood="1">😫<small>Duro</small></button>
@@ -101,10 +102,10 @@
           <button data-mood="3">🙂<small>Bien</small></button>
           <button data-mood="4">🤩<small>Genial</small></button>
         </div>
-        <label class="lbl">✅ Avances <small>(opcional)</small></label>
-        <textarea id="logProgress" rows="2" placeholder="¿Qué has conseguido hoy?"></textarea>
-        <label class="lbl">🧱 Obstáculos <small>(opcional)</small></label>
-        <textarea id="logObstacles" rows="2" placeholder="¿Qué te ha frenado?"></textarea>
+        <div class="diary-grid">
+          <label class="lbl">✅ Avances<textarea id="logProgress" rows="2" placeholder="¿Qué has conseguido?"></textarea></label>
+          <label class="lbl">🧱 Obstáculos<textarea id="logObstacles" rows="2" placeholder="¿Qué te ha frenado?"></textarea></label>
+        </div>
         <p class="saved-note" id="savedNote">Se guarda solo ✓</p>
       </div>
     </section>
@@ -113,16 +114,24 @@
     <section class="view" id="view-history">
       <header class="top"><h2 class="top-title">Historial</h2></header>
 
+      <div class="segmented" id="hseg">
+        <button data-htab="money">💰 Dinero</button>
+        <button data-htab="days">📅 Días</button>
+      </div>
+
+      <div class="hpane" data-pane="money">
       <div class="card" id="todayNeed"></div>
 
-      <div class="card">
+      <div class="card grow">
         <h3>📈 Ingresado vs. necesario</h3>
         <div class="legend"><span><i class="sw-bar"></i>Ingresado</span><span><i class="sw-line"></i>Necesario al día</span></div>
         <p class="chart-tip" id="chartTip"></p>
         <div class="chart" id="chart"></div>
-        <p class="sub chart-note">La línea se recalcula sola: si un día ingresas menos, sube para los días siguientes.</p>
+        <p class="sub chart-note">Si un día ingresas menos, la línea sube para los siguientes.</p>
+      </div>
       </div>
 
+      <div class="hpane" data-pane="days">
       <div class="card">
         <h3>📊 Últimos 7 días</h3>
         <div class="week" id="weekStrip"></div>
@@ -133,7 +142,8 @@
         </div>
       </div>
 
-      <div id="historyList"></div>
+      <div class="scroll" id="historyList"></div>
+      </div>
     </section>
   </main>
 
