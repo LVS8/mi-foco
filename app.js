@@ -6,6 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const eur = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, useGrouping: 'always' }).format(n || 0);
 const num = (v) => { const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isFinite(n) && n > 0 ? n : 0; };
 const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const nowTime = () => new Date().toTimeString().slice(0, 5);
 const niceDate = (k) => new Date(k + 'T12:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
 const AVATARS = ['😎', '🙂', '🦸', '🧑‍💻', '🚀', '🦁', '🐬', '🌞'];
@@ -17,6 +18,7 @@ const THIEF_ACTIONS = [
 
 function sampleData() {
   const y = new Date(); y.setDate(y.getDate() - 1);
+  const y2 = new Date(); y2.setDate(y2.getDate() - 2);
   return {
     goal: { title: 'Vivir en Punta Cana', emoji: '🌴', target: 20000, saved: 0, avatar: '😎', photo: null },
     tasks: [
@@ -34,13 +36,19 @@ function sampleData() {
       { id: uid(), text: 'Ver series entre semana', action: 'later' },
     ],
     log: { [dayKey(y)]: { progress: 'Terminé mi CV y lo envié a 2 empresas.', obstacles: 'Me distraje con el móvil por la tarde.' } },
+    events: [
+      { id: uid(), day: dayKey(y2), time: '10:15', type: 'task', cat: 'priority', title: 'Abrir una cuenta de ahorro aparte' },
+      { id: uid(), day: dayKey(y2), time: '19:40', type: 'money', amount: 150 },
+      { id: uid(), day: dayKey(y), time: '11:30', type: 'task', cat: 'priority', title: 'Terminar mi CV' },
+      { id: uid(), day: dayKey(y), time: '17:05', type: 'task', cat: 'secondary', title: 'Limpiar la bandeja de entrada' },
+    ],
     tab: 'priority',
   };
 }
 
 let S = load();
 function load() {
-  try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && d.goal) return d; } catch (e) {}
+  try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && d.goal) { d.events = d.events || []; return d; } } catch (e) {}
   return sampleData();
 }
 function save() {
@@ -151,18 +159,56 @@ function renderFocus() {
   const entry = S.log[today] || {};
   if (document.activeElement !== $('#logProgress')) $('#logProgress').value = entry.progress || '';
   if (document.activeElement !== $('#logObstacles')) $('#logObstacles').value = entry.obstacles || '';
-
-  const past = Object.keys(S.log).filter((k) => k !== today && (S.log[k].progress || S.log[k].obstacles)).sort().reverse().slice(0, 14);
-  $('#pastLogs').innerHTML = past.length
-    ? `<details class="past"><summary>📅 Días anteriores (${past.length})</summary>${past.map((k) => `
-        <div class="past-day"><b>${esc(niceDate(k))}</b>
-          ${S.log[k].progress ? `<p>✅ ${esc(S.log[k].progress)}</p>` : ''}
-          ${S.log[k].obstacles ? `<p>🧱 ${esc(S.log[k].obstacles)}</p>` : ''}
-        </div>`).join('')}</details>`
-    : '';
 }
 
-function render() { renderHome(); renderTasks(); renderFocus(); }
+/* ---------- Historial ---------- */
+const WEEKDAY = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+function dayLabel(k) {
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  if (k === dayKey()) return 'Hoy';
+  if (k === dayKey(y)) return 'Ayer';
+  const s = niceDate(k);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+const hasLog = (k) => S.log[k] && (S.log[k].progress || S.log[k].obstacles);
+
+function renderHistory() {
+  // Resumen de los últimos 7 días
+  const week = [];
+  for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); week.push(dayKey(d)); }
+  const wk = S.events.filter((e) => e.day >= week[0]);
+  const money = wk.filter((e) => e.type === 'money').reduce((a, e) => a + e.amount, 0);
+  $('#hTasks').textContent = wk.filter((e) => e.type === 'task').length;
+  $('#hMoney').textContent = (money > 0 ? '+' : '') + eur(money);
+  $('#hDays').textContent = week.filter((k) => S.events.some((e) => e.day === k) || hasLog(k)).length + '/7';
+  $('#weekStrip').innerHTML = week.map((k) => {
+    const n = S.events.filter((e) => e.day === k && e.type === 'task').length;
+    const lvl = n === 0 ? 0 : n < 2 ? 1 : n < 4 ? 2 : 3;
+    return `<div class="wday ${k === dayKey() ? 'today' : ''}"><i class="lvl${lvl}">${n || ''}</i><small>${WEEKDAY[new Date(k + 'T12:00').getDay()]}</small></div>`;
+  }).join('');
+
+  // Lista por días, del más reciente al más antiguo
+  const days = {};
+  const add = (k, item) => (days[k] = days[k] || []).push(item);
+  S.events.forEach((e) => add(e.day, e));
+  Object.keys(S.log).forEach((k) => { if (hasLog(k)) add(k, { type: 'log', time: '~', ...S.log[k] }); });
+  const keys = Object.keys(days).sort().reverse();
+
+  $('#historyList').innerHTML = keys.length ? keys.map((k) => {
+    const items = days[k].sort((a, b) => (a.time > b.time ? 1 : -1));
+    const n = items.filter((e) => e.type === 'task').length;
+    return `<div class="card hday">
+      <div class="hday-top"><b>${esc(dayLabel(k))}</b>${n ? `<span class="badge">✅ ${n} ${n === 1 ? 'tarea' : 'tareas'}</span>` : ''}</div>
+      <ul>${items.map((e) => {
+        if (e.type === 'task') return `<li class="h-item ${e.cat}"><span>${e.cat === 'priority' ? '🔥' : '🧩'}</span><p>${esc(e.title)}</p><time>${e.time}</time></li>`;
+        if (e.type === 'money') return `<li class="h-item money"><span>💰</span><p>${e.amount > 0 ? `+${eur(e.amount)} ahorrados` : `${eur(e.amount)} (ajuste)`}</p><time>${e.time}</time></li>`;
+        return `<li class="h-item log"><span>📝</span><p>${e.progress ? `✅ ${esc(e.progress)}` : ''}${e.progress && e.obstacles ? '<br>' : ''}${e.obstacles ? `🧱 ${esc(e.obstacles)}` : ''}</p></li>`;
+      }).join('')}</ul>
+    </div>`;
+  }).join('') : '<div class="card empty"><span>📅</span>Aquí verás lo que haces cada día. ¡Completa tu primera tarea!</div>';
+}
+
+function render() { renderHome(); renderTasks(); renderFocus(); renderHistory(); }
 
 /* ---------- Avisos ---------- */
 let toastTimer;
@@ -217,6 +263,7 @@ $('#photoInput').addEventListener('change', (e) => {
 });
 $('#goalForm').addEventListener('submit', (e) => {
   e.preventDefault();
+  const oldSaved = S.goal.saved;
   S.goal = {
     ...draft,
     emoji: $('#fEmoji').value.trim() || '🎯',
@@ -224,6 +271,8 @@ $('#goalForm').addEventListener('submit', (e) => {
     target: num($('#fTarget').value),
     saved: num($('#fSaved').value),
   };
+  const delta = S.goal.saved - oldSaved;
+  if (delta) S.events.push({ id: uid(), day: dayKey(), time: nowTime(), type: 'money', amount: delta });
   save(); render(); closeModals(); toast('✅ Objetivo actualizado');
 });
 
@@ -299,6 +348,11 @@ document.addEventListener('click', (e) => {
   if (act === 'toggle') {
     const t = S.tasks.find((x) => x.id === id);
     t.done = !t.done;
+    if (t.done) S.events.push({ id: uid(), day: dayKey(), time: nowTime(), type: 'task', cat: t.cat, title: t.title, taskId: t.id });
+    else {
+      const i = S.events.map((e) => e.taskId).lastIndexOf(t.id);
+      if (i > -1) S.events.splice(i, 1);
+    }
     save(); render();
     if (t.done) toast(t.cat === 'priority' ? '🔥 ¡Una menos! Un paso más cerca' : '✅ Hecho');
     return;
