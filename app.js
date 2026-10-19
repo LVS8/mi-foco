@@ -146,6 +146,8 @@ function renderHome() {
   $('#streak').textContent = `🔥 ${st} ${st === 1 ? 'día' : 'días'}`;
 
   renderPace();
+  const todayMoney = S.events.filter((e) => e.day === dayKey() && e.type === 'money' && e.added).reduce((a, e) => a + e.amount, 0);
+  $('#todayMoney').textContent = (todayMoney ? '+' : '') + eur(todayMoney);
 
   // Solo la siguiente tarea prioritaria, en el orden de la lista
   const pending = S.tasks.filter((t) => t.cat === 'priority' && !t.done);
@@ -286,7 +288,7 @@ function renderHistory() {
       <div class="hday-top"><b>${esc(dayLabel(k))}</b>${n ? `<span class="badge">✅ ${n} ${n === 1 ? 'tarea' : 'tareas'}</span>` : ''}</div>
       <ul>${items.map((e) => {
         if (e.type === 'task') return `<li class="h-item ${e.cat}"><span>${e.cat === 'priority' ? '🔥' : '🧩'}</span><p>${esc(e.title)}</p><time>${e.time}</time></li>`;
-        if (e.type === 'money') return `<li class="h-item money"><span>💰</span><p>${e.amount > 0 ? `+${eur(e.amount)} ahorrados` : `${eur(e.amount)} (ajuste)`}</p><time>${e.time}</time></li>`;
+        if (e.type === 'money') return `<li class="h-item money"><span>${e.added ? '💸' : '💰'}</span><p>${e.amount > 0 ? `+${eur(e.amount)} ${e.added ? 'generados' : 'ahorrados'}` : `${eur(e.amount)} (ajuste)`}${e.note ? `<small>${esc(e.note)}</small>` : ''}</p><time>${e.time}</time></li>`;
         return `<li class="h-item log"><span>${e.mood ? MOODS[e.mood].split(' ')[0] : '📝'}</span><p>${e.mood ? `<b>${MOODS[e.mood].split(' ').slice(1).join(' ')}</b>${e.progress || e.obstacles ? '<br>' : ''}` : ''}${e.progress ? `✅ ${esc(e.progress)}` : ''}${e.progress && e.obstacles ? '<br>' : ''}${e.obstacles ? `🧱 ${esc(e.obstacles)}` : ''}</p></li>`;
       }).join('')}</ul>
     </div>`;
@@ -368,6 +370,31 @@ $('#goalForm').addEventListener('submit', (e) => {
   if (hit) celebrate(hit); else toast('✅ Objetivo actualizado');
 });
 
+/* ---------- Añadir dinero ---------- */
+function openMoney() {
+  $('#mAmount').value = '';
+  $('#mNote').value = '';
+  $('#moneyModal').classList.add('open');
+  setTimeout(() => $('#mAmount').focus(), 50);
+}
+$('#quick').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-q]');
+  if (!b) return;
+  $('#mAmount').value = String(num($('#mAmount').value) + Number(b.dataset.q)).replace('.', ',');
+});
+$('#moneyForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const amount = num($('#mAmount').value);
+  if (!amount) return $('#mAmount').focus();
+  const pct = () => (S.goal.target > 0 ? (S.goal.saved / S.goal.target) * 100 : 0);
+  const oldPct = pct();
+  S.goal.saved += amount;
+  S.events.push({ id: uid(), day: dayKey(), time: nowTime(), type: 'money', amount, added: true, note: $('#mNote').value.trim() });
+  save(); render(); closeModals();
+  const hit = [25, 50, 75, 100].filter((m) => oldPct < m && pct() >= m).pop();
+  if (hit) celebrate(hit); else toast(`💸 +${eur(amount)} sumados. ¡Sigue así!`);
+});
+
 /* ---------- Modal tarea ---------- */
 let editing = null;
 function openTask(id) {
@@ -446,6 +473,7 @@ document.addEventListener('click', (e) => {
   const id = btn.closest('[data-id]')?.dataset.id;
 
   if (act === 'edit-goal') return openGoal();
+  if (act === 'add-money') return openMoney();
   if (act === 'toggle') {
     const t = S.tasks.find((x) => x.id === id);
     t.done = !t.done;

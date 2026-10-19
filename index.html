@@ -42,6 +42,11 @@
         <div class="stat card"><span>⏳</span><small>Restante</small><b id="sLeft"></b></div>
       </div>
 
+      <div class="card money-card">
+        <div class="money-today"><small>💸 Generado hoy</small><b id="todayMoney">0 €</b></div>
+        <button class="btn primary" data-act="add-money">＋ Añadir dinero</button>
+      </div>
+
       <div class="card pace" id="pace"></div>
 
       <div class="card next" id="nextTask"></div>
@@ -157,6 +162,25 @@
       <div class="sheet-actions">
         <button type="button" class="btn light" data-close>Cancelar</button>
         <button class="btn primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal dinero -->
+  <div class="modal" id="moneyModal">
+    <form class="sheet" id="moneyForm" autocomplete="off">
+      <h3>💸 ¿Cuánto has generado?</h3>
+      <div class="amount"><input id="mAmount" inputmode="decimal" placeholder="0" required><span>€</span></div>
+      <div class="quick" id="quick">
+        <button type="button" data-q="10">+10</button>
+        <button type="button" data-q="20">+20</button>
+        <button type="button" data-q="50">+50</button>
+        <button type="button" data-q="100">+100</button>
+      </div>
+      <label class="f">¿De dónde? (opcional)<input id="mNote" maxlength="60" placeholder="Ej: cliente, venta, extra…"></label>
+      <div class="sheet-actions">
+        <button type="button" class="btn light" data-close>Cancelar</button>
+        <button class="btn primary">Sumar</button>
       </div>
     </form>
   </div>
