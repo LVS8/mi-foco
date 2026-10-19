@@ -39,6 +39,8 @@ h3 { font-size: 1.05rem; margin-bottom: 12px; }
 .top { display: flex; align-items: center; justify-content: space-between; margin: 4px 2px 16px; }
 .hello { margin: 0; color: var(--muted); font-size: .9rem; }
 .top-title { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; }
+.top-right { display: flex; gap: 8px; align-items: center; }
+.streak { background: #fff; box-shadow: var(--shadow); padding: 7px 12px; border-radius: 999px; font-weight: 800; font-size: .9rem; color: var(--sun2); }
 .install { background: var(--text); color: #fff; padding: 8px 14px; border-radius: 999px; font-size: .85rem; font-weight: 600; }
 
 .card {
@@ -63,6 +65,8 @@ h3 { font-size: 1.05rem; margin-bottom: 12px; }
   content: ""; position: absolute; width: 220px; height: 220px; border-radius: 50%;
   background: rgba(255,255,255,.12); top: -90px; right: -70px;
 }
+.hero.has-cover { background-size: cover; background-position: center; text-shadow: 0 1px 8px rgba(0,0,0,.25); }
+.hero.has-cover::after { display: none; }
 .hero-goal { font-size: 1.35rem; font-weight: 800; margin-top: 12px; position: relative; z-index: 1; }
 .motto { margin: 4px 0 10px; opacity: .92; font-size: .92rem; position: relative; z-index: 1; }
 .pct { font-size: 3.2rem; font-weight: 900; line-height: 1; letter-spacing: -.03em; }
@@ -91,6 +95,21 @@ h3 { font-size: 1.05rem; margin-bottom: 12px; }
 
 .btn:active { transform: scale(.97); }
 
+/* Ritmo de ahorro */
+.pace-empty { width: 100%; text-align: left; font-weight: 600; color: var(--muted); padding: 0; font-size: .92rem; }
+.pace-msg { margin: 0; font-weight: 700; }
+.pace-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.pace-top small { color: var(--muted); font-size: .8rem; }
+.pace-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.pace-nums div { background: var(--bg); border-radius: 14px; padding: 10px 4px; }
+.pace-nums b { display: block; font-size: 1.05rem; color: var(--sun2); white-space: nowrap; }
+.pace-nums small { color: var(--muted); font-size: .75rem; }
+
+/* Confeti */
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
+.confetti i { position: absolute; top: -16px; width: 8px; height: 14px; border-radius: 2px; animation: fall linear forwards; }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
 /* Siguiente tarea */
 .next { border: 2px solid transparent; background: linear-gradient(#fff, #fff) padding-box, var(--grad) border-box; }
 .next.pop { animation: pop .35s cubic-bezier(.2,.8,.2,1); }
@@ -109,6 +128,12 @@ h3 { font-size: 1.05rem; margin-bottom: 12px; }
 .segmented em { font-style: normal; font-size: .75rem; background: var(--line); border-radius: 99px; padding: 1px 7px; margin-left: 2px; }
 .segmented button.on em { background: var(--grad); color: #fff; }
 .segmented.small { margin: 12px 0 4px; }
+.done-box { margin-top: 16px; }
+.done-box summary { cursor: pointer; font-weight: 700; color: var(--muted); padding: 8px 4px; list-style: none; }
+.done-box summary::-webkit-details-marker { display: none; }
+.done-box summary::after { content: ' ›'; display: inline-block; transition: transform .2s; }
+.done-box[open] summary::after { transform: rotate(90deg); }
+.done-box .tasks { margin-top: 8px; }
 .hint { color: var(--muted); font-size: .86rem; margin: 4px 4px 12px; }
 
 .add { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -162,6 +187,11 @@ h3 { font-size: 1.05rem; margin-bottom: 12px; }
 
 /* Diario */
 .date { color: var(--muted); font-weight: 500; font-size: .8rem; margin-left: 4px; }
+.moods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+.moods button { background: var(--bg); border-radius: 14px; padding: 8px 4px; font-size: 1.7rem; display: flex; flex-direction: column; align-items: center; border: 2px solid transparent; transition: .15s; }
+.moods button small { font-size: .72rem; font-weight: 700; color: var(--muted); }
+.moods button.on { border-color: var(--sun2); background: #fff0f4; transform: scale(1.05); }
+.lbl small { color: var(--muted); font-weight: 500; }
 .lbl { display: block; font-size: .85rem; font-weight: 700; margin: 6px 0 6px; }
 textarea {
   width: 100%; resize: vertical; padding: 12px; border-radius: 14px; border: 2px solid var(--line); background: var(--bg); outline: none; margin-bottom: 6px;
@@ -224,6 +254,10 @@ details.past summary { font-weight: 700; font-size: .9rem; cursor: pointer; colo
 .f input { padding: 12px; border-radius: 12px; border: 2px solid var(--line); outline: none; font-size: 1rem; color: var(--text); font-weight: 500; width: 100%; }
 .emoji-f { flex: 0 0 72px; }
 .emoji-f input { text-align: center; font-size: 1.3rem; padding: 9px 4px; }
+.cover-edit { display: flex; gap: 8px; margin-bottom: 12px; }
+.cover-edit .btn { padding: 10px 14px; font-size: .88rem; }
+.cover-edit label { flex: 1; }
+.f input[type=date] { min-height: 46px; }
 .avatar-edit { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
 .avatar-edit .avatar.big { margin: 0; background-color: var(--bg); box-shadow: none; }
 .avatar-actions { display: flex; flex-direction: column; gap: 8px; }

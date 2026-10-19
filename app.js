@@ -9,6 +9,7 @@ const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1
 const nowTime = () => new Date().toTimeString().slice(0, 5);
 const niceDate = (k) => new Date(k + 'T12:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
+const MOODS = { 1: '😫 Día duro', 2: '😐 Día regular', 3: '🙂 Buen día', 4: '🤩 ¡Día genial!' };
 const AVATARS = ['😎', '🙂', '🦸', '🧑‍💻', '🚀', '🦁', '🐬', '🌞'];
 const THIEF_ACTIONS = [
   { v: 'stop', label: '🛑 Dejar' },
@@ -56,6 +57,49 @@ function save() {
   catch (e) { toast('⚠️ No se ha podido guardar. Prueba con una foto más pequeña.'); }
 }
 
+function loadImage(file, maxW, square, cb) {
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    let sx = 0, sy = 0, sw = img.width, sh = img.height;
+    if (square) { const s = Math.min(sw, sh); sx = (sw - s) / 2; sy = (sh - s) / 2; sw = sh = s; }
+    const scale = Math.min(1, maxW / sw);
+    c.width = Math.round(sw * scale); c.height = Math.round(sh * scale);
+    c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(img.src);
+    cb(c.toDataURL('image/jpeg', square ? 0.85 : 0.72));
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+/* Días seguidos completando al menos una tarea prioritaria */
+function streak() {
+  const days = new Set(S.events.filter((e) => e.type === 'task' && e.cat === 'priority').map((e) => e.day));
+  const d = new Date();
+  if (!days.has(dayKey(d))) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (days.has(dayKey(d))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+/* Confeti al pasar un hito */
+function celebrate(m) {
+  const box = document.createElement('div');
+  box.className = 'confetti';
+  const colors = ['#ffa940', '#ff4d7d', '#12b8a6', '#7d8bd8', '#ffd23f'];
+  for (let i = 0; i < 90; i++) {
+    const p = document.createElement('i');
+    p.style.left = Math.random() * 100 + '%';
+    p.style.background = colors[i % colors.length];
+    p.style.animationDelay = Math.random() * 0.7 + 's';
+    p.style.animationDuration = 1.8 + Math.random() * 1.5 + 's';
+    box.appendChild(p);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 4200);
+  toast(m >= 100 ? '🏆 ¡OBJETIVO CONSEGUIDO! ¡Enhorabuena!' : `🎉 ¡Has llegado al ${m} % de tu objetivo!`);
+}
+
 /* ---------- Navegación ---------- */
 function go(view) {
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + view));
@@ -92,6 +136,16 @@ function renderHome() {
   $('#sSaved').textContent = eur(g.saved);
   $('#sLeft').textContent = eur(Math.max(0, g.target - g.saved));
   setAvatar($('#heroAvatar'));
+  $('#hero').style.backgroundImage = g.cover
+    ? `linear-gradient(160deg, rgba(255,150,60,.55), rgba(255,60,120,.8)), url(${g.cover})`
+    : '';
+  $('#hero').classList.toggle('has-cover', !!g.cover);
+
+  const st = streak();
+  $('#streak').classList.toggle('hidden', !st);
+  $('#streak').textContent = `🔥 ${st} ${st === 1 ? 'día' : 'días'}`;
+
+  renderPace();
 
   // Solo la siguiente tarea prioritaria, en el orden de la lista
   const pending = S.tasks.filter((t) => t.cat === 'priority' && !t.done);
@@ -113,6 +167,28 @@ function renderHome() {
   }
 }
 
+function renderPace() {
+  const g = S.goal, box = $('#pace');
+  const left = g.target - g.saved;
+  if (!g.deadline) {
+    box.innerHTML = `<button class="pace-empty" data-act="edit-goal">📅 Ponle fecha a tu objetivo y te digo cuánto ahorrar al mes ›</button>`;
+    return;
+  }
+  const end = new Date(g.deadline + 'T23:59');
+  const days = Math.ceil((end - new Date()) / 864e5);
+  const when = end.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  if (left <= 0) { box.innerHTML = `<p class="pace-msg">🏆 ¡Objetivo conseguido antes del ${when}!</p>`; return; }
+  if (days <= 0) { box.innerHTML = `<button class="pace-empty" data-act="edit-goal">⏰ La fecha (${when}) ya pasó. Ponle una nueva ›</button>`; return; }
+  const months = days / 30.44, weeks = days / 7;
+  const time = days > 60 ? `≈ ${Math.round(months)} meses` : `${days} ${days === 1 ? 'día' : 'días'}`;
+  box.innerHTML = `<div class="pace-top"><b>📅 Quedan ${time}</b><small>hasta el ${when}</small></div>
+    <div class="pace-nums">
+      <div><b>${eur(Math.ceil(left / Math.max(months, 1)))}</b><small>al mes</small></div>
+      <div><b>${eur(Math.ceil(left / Math.max(weeks, 1)))}</b><small>a la semana</small></div>
+      <div><b>${eur(Math.ceil(left / days))}</b><small>al día</small></div>
+    </div>`;
+}
+
 function taskHTML(t, grip) {
   return `<li class="task ${t.cat} ${t.done ? 'done' : ''}" data-id="${t.id}">
     <button class="check" data-act="toggle" aria-label="Completar">✓</button>
@@ -123,6 +199,7 @@ function taskHTML(t, grip) {
   </li>`;
 }
 
+let doneOpen = false;
 function renderTasks() {
   const tab = S.tab;
   document.querySelectorAll('#seg button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
@@ -134,10 +211,17 @@ function renderTasks() {
     : 'Útiles, pero no urgentes. Solo cuando acabes las prioritarias 😉';
   $('#newTask').placeholder = tab === 'priority' ? 'Nueva tarea prioritaria…' : 'Nueva tarea secundaria…';
 
-  const list = S.tasks.filter((t) => t.cat === tab).sort((a, b) => a.done - b.done);
-  $('#taskList').innerHTML = list.length
-    ? list.map((t) => taskHTML(t, true)).join('')
-    : `<li class="empty"><span>${tab === 'priority' ? '🔥' : '🧩'}</span>No hay tareas aquí. ¡Añade una arriba!</li>`;
+  const list = S.tasks.filter((t) => t.cat === tab);
+  const pendList = list.filter((t) => !t.done), doneList = list.filter((t) => t.done);
+  $('#taskList').innerHTML = pendList.length
+    ? pendList.map((t) => taskHTML(t, true)).join('')
+    : doneList.length
+      ? '<li class="empty"><span>🎉</span>¡Todo hecho! Añade la siguiente arriba.</li>'
+      : `<li class="empty"><span>${tab === 'priority' ? '🔥' : '🧩'}</span>No hay tareas aquí. ¡Añade una arriba!</li>`;
+  $('#doneWrap').innerHTML = doneList.length
+    ? `<details class="done-box" ${doneOpen ? 'open' : ''}><summary>✅ Completadas (${doneList.length})</summary>
+        <ul class="tasks">${doneList.map((t) => taskHTML(t)).join('')}</ul></details>`
+    : '';
 }
 
 function renderFocus() {
@@ -157,6 +241,7 @@ function renderFocus() {
   const today = dayKey();
   $('#todayDate').textContent = niceDate(today);
   const entry = S.log[today] || {};
+  document.querySelectorAll('#moods button').forEach((b) => b.classList.toggle('on', String(entry.mood) === b.dataset.mood));
   if (document.activeElement !== $('#logProgress')) $('#logProgress').value = entry.progress || '';
   if (document.activeElement !== $('#logObstacles')) $('#logObstacles').value = entry.obstacles || '';
 }
@@ -170,7 +255,7 @@ function dayLabel(k) {
   const s = niceDate(k);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
-const hasLog = (k) => S.log[k] && (S.log[k].progress || S.log[k].obstacles);
+const hasLog = (k) => S.log[k] && (S.log[k].progress || S.log[k].obstacles || S.log[k].mood);
 
 function renderHistory() {
   // Resumen de los últimos 7 días
@@ -202,7 +287,7 @@ function renderHistory() {
       <ul>${items.map((e) => {
         if (e.type === 'task') return `<li class="h-item ${e.cat}"><span>${e.cat === 'priority' ? '🔥' : '🧩'}</span><p>${esc(e.title)}</p><time>${e.time}</time></li>`;
         if (e.type === 'money') return `<li class="h-item money"><span>💰</span><p>${e.amount > 0 ? `+${eur(e.amount)} ahorrados` : `${eur(e.amount)} (ajuste)`}</p><time>${e.time}</time></li>`;
-        return `<li class="h-item log"><span>📝</span><p>${e.progress ? `✅ ${esc(e.progress)}` : ''}${e.progress && e.obstacles ? '<br>' : ''}${e.obstacles ? `🧱 ${esc(e.obstacles)}` : ''}</p></li>`;
+        return `<li class="h-item log"><span>${e.mood ? MOODS[e.mood].split(' ')[0] : '📝'}</span><p>${e.mood ? `<b>${MOODS[e.mood].split(' ').slice(1).join(' ')}</b>${e.progress || e.obstacles ? '<br>' : ''}` : ''}${e.progress ? `✅ ${esc(e.progress)}` : ''}${e.progress && e.obstacles ? '<br>' : ''}${e.obstacles ? `🧱 ${esc(e.obstacles)}` : ''}</p></li>`;
       }).join('')}</ul>
     </div>`;
   }).join('') : '<div class="card empty"><span>📅</span>Aquí verás lo que haces cada día. ¡Completa tu primera tarea!</div>';
@@ -229,6 +314,8 @@ function openGoal() {
   $('#fTitle').value = draft.title;
   $('#fTarget').value = draft.target || '';
   $('#fSaved').value = draft.saved || '';
+  $('#fDeadline').value = draft.deadline || '';
+  renderCoverBtn();
   renderDraftAvatar();
   $('#goalModal').classList.add('open');
 }
@@ -244,36 +331,41 @@ $('#avatarPick').addEventListener('click', (e) => {
   if (!b) return;
   draft.avatar = b.dataset.av; draft.photo = null; renderDraftAvatar();
 });
+function renderCoverBtn() {
+  $('#coverBtn').firstChild.textContent = draft.cover ? '✅ Foto de meta puesta · Cambiar' : '🏝️ Foto de tu meta';
+  $('#removeCover').classList.toggle('hidden', !draft.cover);
+}
+$('#coverInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) loadImage(file, 900, false, (url) => { draft.cover = url; renderCoverBtn(); });
+  e.target.value = '';
+});
+$('#removeCover').addEventListener('click', () => { draft.cover = null; renderCoverBtn(); });
 $('#removePhoto').addEventListener('click', () => { draft.photo = null; renderDraftAvatar(); });
 $('#photoInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  const img = new Image();
-  img.onload = () => {
-    const size = 240, c = document.createElement('canvas');
-    c.width = c.height = size;
-    const s = Math.min(img.width, img.height);
-    c.getContext('2d').drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
-    draft.photo = c.toDataURL('image/jpeg', 0.85);
-    URL.revokeObjectURL(img.src);
-    renderDraftAvatar();
-  };
-  img.src = URL.createObjectURL(file);
+  loadImage(file, 240, true, (url) => { draft.photo = url; renderDraftAvatar(); });
   e.target.value = '';
 });
 $('#goalForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const oldSaved = S.goal.saved;
+  const pctOf = (g) => (g.target > 0 ? (g.saved / g.target) * 100 : 0);
+  const oldPct = pctOf(S.goal);
   S.goal = {
     ...draft,
     emoji: $('#fEmoji').value.trim() || '🎯',
     title: $('#fTitle').value.trim() || 'Mi objetivo',
     target: num($('#fTarget').value),
     saved: num($('#fSaved').value),
+    deadline: $('#fDeadline').value || null,
   };
   const delta = S.goal.saved - oldSaved;
   if (delta) S.events.push({ id: uid(), day: dayKey(), time: nowTime(), type: 'money', amount: delta });
-  save(); render(); closeModals(); toast('✅ Objetivo actualizado');
+  save(); render(); closeModals();
+  const hit = [25, 50, 75, 100].filter((m) => oldPct < m && pctOf(S.goal) >= m).pop();
+  if (hit) celebrate(hit); else toast('✅ Objetivo actualizado');
 });
 
 /* ---------- Modal tarea ---------- */
@@ -323,13 +415,22 @@ $('#addThief').addEventListener('submit', (e) => {
 let logTimer;
 ['#logProgress', '#logObstacles'].forEach((sel) => $(sel).addEventListener('input', () => {
   const k = dayKey();
-  S.log[k] = { progress: $('#logProgress').value, obstacles: $('#logObstacles').value };
+  S.log[k] = { ...S.log[k], progress: $('#logProgress').value, obstacles: $('#logObstacles').value };
   clearTimeout(logTimer);
   logTimer = setTimeout(() => {
     save();
     const n = $('#savedNote'); n.classList.add('show'); setTimeout(() => n.classList.remove('show'), 1500);
   }, 400);
 }));
+
+$('#moods').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mood]');
+  if (!b) return;
+  const k = dayKey(), m = Number(b.dataset.mood);
+  S.log[k] = { ...S.log[k], mood: S.log[k] && S.log[k].mood === m ? null : m };
+  save(); renderFocus(); renderHistory();
+});
+$('#doneWrap').addEventListener('toggle', (e) => { doneOpen = e.target.open; }, true);
 
 /* ---------- Clics generales ---------- */
 document.addEventListener('click', (e) => {
@@ -354,7 +455,10 @@ document.addEventListener('click', (e) => {
       if (i > -1) S.events.splice(i, 1);
     }
     save(); render();
-    if (t.done) toast(t.cat === 'priority' ? '🔥 ¡Una menos! Un paso más cerca' : '✅ Hecho');
+    if (t.done) {
+      const st = streak();
+      toast(t.cat === 'priority' ? `🔥 ¡Una menos! Racha: ${st} ${st === 1 ? 'día' : 'días'}` : '✅ Hecho');
+    }
     return;
   }
   if (act === 'edit') return openTask(id);

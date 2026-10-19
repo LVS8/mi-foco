@@ -22,10 +22,13 @@
           <p class="hello">¡Vamos a por ello! 💪</p>
           <h2 class="top-title">Mi objetivo</h2>
         </div>
-        <button class="install hidden" id="installBtn">📲 Instalar</button>
+        <div class="top-right">
+          <span class="streak hidden" id="streak"></span>
+          <button class="install hidden" id="installBtn">📲 Instalar</button>
+        </div>
       </header>
 
-      <div class="hero card">
+      <div class="hero card" id="hero">
         <button class="avatar big" data-act="edit-goal" id="heroAvatar" aria-label="Cambiar avatar"></button>
         <div class="hero-goal"><span id="goalEmoji"></span> <span id="goalTitle"></span></div>
         <p class="motto" id="motto"></p>
@@ -38,6 +41,8 @@
         <div class="stat card good"><span>💰</span><small>Ahorrado</small><b id="sSaved"></b></div>
         <div class="stat card"><span>⏳</span><small>Restante</small><b id="sLeft"></b></div>
       </div>
+
+      <div class="card pace" id="pace"></div>
 
       <div class="card next" id="nextTask"></div>
 
@@ -61,6 +66,7 @@
       </form>
 
       <ul class="tasks" id="taskList"></ul>
+      <div id="doneWrap"></div>
     </section>
 
     <!-- ENFOQUE -->
@@ -84,9 +90,15 @@
 
       <div class="card">
         <h3>📝 Diario de hoy <small class="date" id="todayDate"></small></h3>
-        <label class="lbl">✅ Avances</label>
+        <div class="moods" id="moods">
+          <button data-mood="1">😫<small>Duro</small></button>
+          <button data-mood="2">😐<small>Regular</small></button>
+          <button data-mood="3">🙂<small>Bien</small></button>
+          <button data-mood="4">🤩<small>Genial</small></button>
+        </div>
+        <label class="lbl">✅ Avances <small>(opcional)</small></label>
         <textarea id="logProgress" rows="2" placeholder="¿Qué has conseguido hoy?"></textarea>
-        <label class="lbl">🧱 Obstáculos</label>
+        <label class="lbl">🧱 Obstáculos <small>(opcional)</small></label>
         <textarea id="logObstacles" rows="2" placeholder="¿Qué te ha frenado?"></textarea>
         <p class="saved-note" id="savedNote">Se guarda solo ✓</p>
       </div>
@@ -136,6 +148,11 @@
       <div class="row">
         <label class="f">Necesito (€)<input id="fTarget" inputmode="decimal" required></label>
         <label class="f">Ahorrado (€)<input id="fSaved" inputmode="decimal"></label>
+      </div>
+      <label class="f">📅 Fecha límite (opcional)<input type="date" id="fDeadline"></label>
+      <div class="cover-edit">
+        <label class="btn light" id="coverBtn">🏝️ Foto de tu meta<input type="file" accept="image/*" id="coverInput" hidden></label>
+        <button type="button" class="btn light hidden" id="removeCover">Quitar</button>
       </div>
       <div class="sheet-actions">
         <button type="button" class="btn light" data-close>Cancelar</button>
