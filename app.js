@@ -3,8 +3,22 @@ const KEY = 'mi-foco-v1';
 const $ = (s) => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const eur = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0, useGrouping: 'always' }).format(n || 0);
-const num = (v) => { const n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isFinite(n) && n > 0 ? n : 0; };
+// Euros con céntimos solo cuando los hay: 20.000 € · 4,56 €
+const cents = (n) => Math.round((n || 0) * 100) / 100;
+const eur = (n) => {
+  const v = cents(n);
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2, useGrouping: 'always' }).format(v);
+};
+// Lee "4,56", "4.56", "1.250", "1.250,50" o "1250.5" como el número correcto
+const num = (v) => {
+  let t = String(v).trim().replace(/[€\s]/g, '');
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+  const n = parseFloat(t);
+  return isFinite(n) && n > 0 ? cents(n) : 0;
+};
+// Para rellenar un campo: 4.56 → "4,56"
+const numText = (n) => (n ? String(cents(n)).replace('.', ',') : '');
 const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const nowTime = () => new Date().toTimeString().slice(0, 5);
 const niceDate = (k) => new Date(k + 'T12:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -397,8 +411,8 @@ function openGoal() {
   draft = { ...S.goal };
   $('#fEmoji').value = draft.emoji;
   $('#fTitle').value = draft.title;
-  $('#fTarget').value = draft.target || '';
-  $('#fSaved').value = draft.saved || '';
+  $('#fTarget').value = numText(draft.target);
+  $('#fSaved').value = numText(draft.saved);
   $('#fDeadline').value = draft.deadline || '';
   renderCoverBtn();
   renderDraftAvatar();
@@ -446,7 +460,7 @@ $('#goalForm').addEventListener('submit', (e) => {
     saved: num($('#fSaved').value),
     deadline: $('#fDeadline').value || null,
   };
-  const delta = S.goal.saved - oldSaved;
+  const delta = cents(S.goal.saved - oldSaved);
   if (delta) S.events.push({ id: uid(), day: dayKey(), time: nowTime(), type: 'money', amount: delta });
   save(); render(); closeModals();
   const hit = [25, 50, 75, 100].filter((m) => oldPct < m && pctOf(S.goal) >= m).pop();
@@ -463,7 +477,7 @@ function openMoney() {
 $('#quick').addEventListener('click', (e) => {
   const b = e.target.closest('[data-q]');
   if (!b) return;
-  $('#mAmount').value = String(num($('#mAmount').value) + Number(b.dataset.q)).replace('.', ',');
+  $('#mAmount').value = numText(num($('#mAmount').value) + Number(b.dataset.q));
 });
 $('#moneyForm').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -471,7 +485,7 @@ $('#moneyForm').addEventListener('submit', (e) => {
   if (!amount) return $('#mAmount').focus();
   const pct = () => (S.goal.target > 0 ? (S.goal.saved / S.goal.target) * 100 : 0);
   const oldPct = pct();
-  S.goal.saved += amount;
+  S.goal.saved = cents(S.goal.saved + amount);
   S.events.push({ id: uid(), day: dayKey(), time: nowTime(), type: 'money', amount, added: true, note: $('#mNote').value.trim() });
   save(); render(); closeModals();
   const hit = [25, 50, 75, 100].filter((m) => oldPct < m && pct() >= m).pop();
