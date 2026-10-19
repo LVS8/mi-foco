@@ -83,26 +83,35 @@ function renderHome() {
   $('#sTarget').textContent = eur(g.target);
   $('#sSaved').textContent = eur(g.saved);
   $('#sLeft').textContent = eur(Math.max(0, g.target - g.saved));
-  $('#jSaved').textContent = eur(g.saved);
-  $('#jTarget').textContent = eur(g.target);
-  $('#trackFill').style.width = p + '%';
-  $('#traveler').style.left = p + '%';
-  $('#finishEmoji').textContent = g.emoji;
   setAvatar($('#heroAvatar'));
-  setAvatar($('#travelerAvatar'));
 
-  const pending = S.tasks.filter((t) => t.cat === 'priority' && !t.done).length;
-  $('#todayText').textContent = pending
-    ? `Hoy: ${pending} ${pending === 1 ? 'tarea prioritaria pendiente' : 'tareas prioritarias pendientes'}`
-    : '¡Prioridades al día! Revisa tu enfoque';
+  // Solo la siguiente tarea prioritaria, en el orden de la lista
+  const pending = S.tasks.filter((t) => t.cat === 'priority' && !t.done);
+  const next = pending[0];
+  const box = $('#nextTask');
+  box.dataset.id = next ? next.id : '';
+  box.innerHTML = next
+    ? `<p class="next-label">🔥 Tu siguiente paso</p>
+       <div class="next-row">
+         <button class="check" data-act="toggle" aria-label="Completar">✓</button>
+         <span class="next-title">${esc(next.title)}</span>
+       </div>
+       <button class="next-more" data-go="tasks">${pending.length > 1 ? `Después: ${pending.length - 1} más` : 'Es la última prioritaria'} ›</button>`
+    : `<div class="empty"><span>🎉</span>¡Prioridades al día!</div>
+       <button class="next-more" data-go="tasks">Añadir otra tarea ›</button>`;
+  if (box.dataset.shown !== box.dataset.id) {
+    box.dataset.shown = box.dataset.id;
+    box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop');
+  }
 }
 
-function taskHTML(t) {
+function taskHTML(t, grip) {
   return `<li class="task ${t.cat} ${t.done ? 'done' : ''}" data-id="${t.id}">
     <button class="check" data-act="toggle" aria-label="Completar">✓</button>
     <span class="t-title">${esc(t.title)}</span>
     <button class="icon" data-act="edit" aria-label="Editar">✏️</button>
     <button class="icon" data-act="del" aria-label="Eliminar">🗑️</button>
+    ${grip && !t.done ? '<span class="grip" aria-label="Arrastrar para reordenar">⠿</span>' : ''}
   </li>`;
 }
 
@@ -119,7 +128,7 @@ function renderTasks() {
 
   const list = S.tasks.filter((t) => t.cat === tab).sort((a, b) => a.done - b.done);
   $('#taskList').innerHTML = list.length
-    ? list.map(taskHTML).join('')
+    ? list.map((t) => taskHTML(t, true)).join('')
     : `<li class="empty"><span>${tab === 'priority' ? '🔥' : '🧩'}</span>No hay tareas aquí. ¡Añade una arriba!</li>`;
 }
 
@@ -127,7 +136,7 @@ function renderFocus() {
   const top = S.tasks.filter((t) => t.cat === 'priority' && !t.done).slice(0, 3);
   const anyPri = S.tasks.some((t) => t.cat === 'priority');
   $('#top3').innerHTML = top.length
-    ? top.map(taskHTML).join('')
+    ? top.map((t) => taskHTML(t)).join('')
     : `<li class="empty"><span>${anyPri ? '🎉' : '✍️'}</span>${anyPri ? '¡Has completado todas tus prioridades!' : 'Añade tareas prioritarias en la pestaña Tareas.'}</li>`;
 
   $('#thieves').innerHTML = S.thieves.length
@@ -248,7 +257,7 @@ $('#addTask').addEventListener('submit', (e) => {
   e.preventDefault();
   const title = $('#newTask').value.trim();
   if (!title) return;
-  S.tasks.unshift({ id: uid(), title, cat: S.tab, done: false });
+  S.tasks.push({ id: uid(), title, cat: S.tab, done: false });
   $('#newTask').value = '';
   save(); render();
 });
@@ -312,6 +321,46 @@ document.addEventListener('click', (e) => {
     save(); render();
     return toast('🗑️ Eliminado', () => { S.thieves.splice(i, 0, removed); save(); render(); });
   }
+});
+
+/* ---------- Reordenar arrastrando el asa ⠿ ---------- */
+$('#taskList').addEventListener('pointerdown', (e) => {
+  const grip = e.target.closest('.grip');
+  if (!grip) return;
+  e.preventDefault();
+  const list = $('#taskList');
+  const li = grip.closest('.task');
+  let startY = e.clientY;
+  li.classList.add('dragging');
+
+  const move = (ev) => {
+    const y = ev.clientY;
+    const mid = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+    const before = li.offsetTop;
+    for (;;) {
+      const prev = li.previousElementSibling;
+      const next = li.nextElementSibling;
+      if (next && !next.classList.contains('done') && y > mid(next)) list.insertBefore(next, li);
+      else if (prev && y < mid(prev)) list.insertBefore(prev, li.nextElementSibling);
+      else break;
+    }
+    startY += li.offsetTop - before;
+    li.style.transform = `translateY(${y - startY}px)`;
+  };
+  const end = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', end);
+    window.removeEventListener('pointercancel', end);
+    li.classList.remove('dragging');
+    li.style.transform = '';
+    const order = [...list.querySelectorAll('.task')].map((x) => x.dataset.id);
+    const moved = order.map((id) => S.tasks.find((t) => t.id === id));
+    S.tasks = [...moved, ...S.tasks.filter((t) => !order.includes(t.id))];
+    save(); render();
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', end);
+  window.addEventListener('pointercancel', end);
 });
 
 /* ---------- Instalar como app ---------- */
