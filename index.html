@@ -18,10 +18,7 @@
     <!-- INICIO -->
     <section class="view active" id="view-home">
       <header class="top">
-        <div>
-          <p class="hello">¡Vamos a por ello! 💪</p>
-          <h2 class="top-title">Mi objetivo</h2>
-        </div>
+        <h2 class="top-title">Mi objetivo</h2>
         <div class="top-right">
           <span class="streak hidden" id="streak"></span>
           <button class="install hidden" id="installBtn">📲 Instalar</button>
@@ -29,9 +26,14 @@
       </header>
 
       <div class="hero card" id="hero">
-        <button class="avatar big" data-act="edit-goal" id="heroAvatar" aria-label="Cambiar avatar"></button>
-        <div class="hero-goal"><span id="goalEmoji"></span> <span id="goalTitle"></span></div>
-        <p class="motto" id="motto"></p>
+        <button class="hero-edit" data-act="edit-goal" aria-label="Editar objetivo">✎</button>
+        <div class="hero-row">
+          <button class="avatar big" data-act="edit-goal" id="heroAvatar" aria-label="Cambiar avatar"></button>
+          <div class="hero-text">
+            <div class="hero-goal"><span id="goalEmoji"></span> <span id="goalTitle"></span></div>
+            <p class="motto" id="motto"></p>
+          </div>
+        </div>
         <div class="pct"><span id="pct">0</span><small>%</small></div>
         <div class="bar"><div class="fill" id="bar"></div></div>
       </div>
@@ -50,8 +52,6 @@
       <div class="card pace" id="pace"></div>
 
       <div class="card next" id="nextTask"></div>
-
-      <button class="btn light block" data-act="edit-goal">✏️ Editar objetivo</button>
     </section>
 
     <!-- TAREAS -->
@@ -112,6 +112,16 @@
     <!-- HISTORIAL -->
     <section class="view" id="view-history">
       <header class="top"><h2 class="top-title">Historial</h2></header>
+
+      <div class="card" id="todayNeed"></div>
+
+      <div class="card">
+        <h3>📈 Ingresado vs. necesario</h3>
+        <div class="legend"><span><i class="sw-bar"></i>Ingresado</span><span><i class="sw-line"></i>Necesario al día</span></div>
+        <p class="chart-tip" id="chartTip"></p>
+        <div class="chart" id="chart"></div>
+        <p class="sub chart-note">La línea se recalcula sola: si un día ingresas menos, sube para los días siguientes.</p>
+      </div>
 
       <div class="card">
         <h3>📊 Últimos 7 días</h3>

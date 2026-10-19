@@ -155,12 +155,12 @@ function renderHome() {
   const box = $('#nextTask');
   box.dataset.id = next ? next.id : '';
   box.innerHTML = next
-    ? `<p class="next-label">🔥 Tu siguiente paso</p>
+    ? `<div class="next-head"><p class="next-label">🔥 Tu siguiente paso</p>
+         <button class="next-more" data-go="tasks">${pending.length > 1 ? `+${pending.length - 1} más` : 'Última'} ›</button></div>
        <div class="next-row">
          <button class="check" data-act="toggle" aria-label="Completar">✓</button>
          <span class="next-title">${esc(next.title)}</span>
-       </div>
-       <button class="next-more" data-go="tasks">${pending.length > 1 ? `Después: ${pending.length - 1} más` : 'Es la última prioritaria'} ›</button>`
+       </div>`
     : `<div class="empty"><span>🎉</span>¡Prioridades al día!</div>
        <button class="next-more" data-go="tasks">Añadir otra tarea ›</button>`;
   if (box.dataset.shown !== box.dataset.id) {
@@ -169,6 +169,19 @@ function renderHome() {
   }
 }
 
+/* ---------- Cuánto hay que ingresar cada día ---------- */
+// Días que quedan desde el día k (incluido) hasta la fecha límite (incluida)
+const daysLeftFrom = (k) => Math.round((new Date(S.goal.deadline + 'T12:00') - new Date(k + 'T12:00')) / 864e5) + 1;
+// Lo ahorrado al empezar el día k
+const savedAtStart = (k) => S.goal.saved - S.events.filter((e) => e.type === 'money' && e.day >= k).reduce((a, e) => a + e.amount, 0);
+// Lo que había que ingresar el día k para llegar a tiempo (se reajusta solo cada día)
+function neededOn(k) {
+  if (!S.goal.deadline) return null;
+  const d = daysLeftFrom(k);
+  return d > 0 ? Math.max(0, (S.goal.target - savedAtStart(k)) / d) : null;
+}
+const incomeOn = (k) => S.events.filter((e) => e.type === 'money' && e.day === k && e.amount > 0).reduce((a, e) => a + e.amount, 0);
+
 function renderPace() {
   const g = S.goal, box = $('#pace');
   const left = g.target - g.saved;
@@ -176,18 +189,18 @@ function renderPace() {
     box.innerHTML = `<button class="pace-empty" data-act="edit-goal">📅 Ponle fecha a tu objetivo y te digo cuánto ahorrar al mes ›</button>`;
     return;
   }
-  const end = new Date(g.deadline + 'T23:59');
-  const days = Math.ceil((end - new Date()) / 864e5);
-  const when = end.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  const end = new Date(g.deadline + 'T12:00');
+  const days = daysLeftFrom(dayKey());
+  const when = end.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   if (left <= 0) { box.innerHTML = `<p class="pace-msg">🏆 ¡Objetivo conseguido antes del ${when}!</p>`; return; }
   if (days <= 0) { box.innerHTML = `<button class="pace-empty" data-act="edit-goal">⏰ La fecha (${when}) ya pasó. Ponle una nueva ›</button>`; return; }
   const months = days / 30.44, weeks = days / 7;
   const time = days > 60 ? `≈ ${Math.round(months)} meses` : `${days} ${days === 1 ? 'día' : 'días'}`;
-  box.innerHTML = `<div class="pace-top"><b>📅 Quedan ${time}</b><small>hasta el ${when}</small></div>
+  box.innerHTML = `<div class="pace-top"><b>📅 Quedan ${time}</b><small>hasta ${when}</small></div>
     <div class="pace-nums">
       <div><b>${eur(Math.ceil(left / Math.max(months, 1)))}</b><small>al mes</small></div>
       <div><b>${eur(Math.ceil(left / Math.max(weeks, 1)))}</b><small>a la semana</small></div>
-      <div><b>${eur(Math.ceil(left / days))}</b><small>al día</small></div>
+      <div><b>${eur(Math.ceil(neededOn(dayKey())))}</b><small>hoy</small></div>
     </div>`;
 }
 
@@ -295,7 +308,70 @@ function renderHistory() {
   }).join('') : '<div class="card empty"><span>📅</span>Aquí verás lo que haces cada día. ¡Completa tu primera tarea!</div>';
 }
 
-function render() { renderHome(); renderTasks(); renderFocus(); renderHistory(); }
+function renderMoney() {
+  const g = S.goal, today = dayKey();
+  const needToday = neededOn(today), inToday = incomeOn(today);
+
+  // Tarjeta de hoy
+  if (needToday == null) {
+    $('#todayNeed').innerHTML = `<h3>🎯 Hoy</h3><button class="pace-empty" data-act="edit-goal">📅 Ponle fecha límite a tu objetivo y te digo cuánto ingresar cada día ›</button>`;
+  } else {
+    const need = Math.ceil(needToday), pct = need ? Math.min(100, (inToday / need) * 100) : 100;
+    const ok = inToday >= need;
+    $('#todayNeed').innerHTML = `<h3>🎯 Hoy</h3>
+      <div class="need-nums"><div><small>Necesitas</small><b class="need">${eur(need)}</b></div>
+        <div><small>Llevas</small><b class="got">${eur(inToday)}</b></div></div>
+      <div class="need-bar"><div style="width:${pct}%"></div></div>
+      <p class="need-msg">${ok ? '✅ ¡Objetivo de hoy cumplido!' : `Te faltan <b>${eur(need - inToday)}</b>. Lo que no metas hoy se reparte entre los días que quedan.`}</p>
+      <button class="btn primary block" data-act="add-money">＋ Añadir dinero</button>`;
+  }
+
+  // Gráfico de los últimos 14 días
+  const days = [];
+  for (let i = 13; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(dayKey(d)); }
+  const inc = days.map(incomeOn), need = days.map(neededOn);
+  const top = Math.max(1, ...inc, ...need.filter((x) => x != null));
+  const raw = top / 3, p = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].find((m) => m * p >= raw) * p;
+  const yMax = step * Math.ceil(top / step);
+  const W = 340, H = 170, L = 36, R = 6, T = 10, B = 22, pw = W - L - R, ph = H - T - B;
+  const bw = pw / days.length, x = (i) => L + bw * i + bw / 2, y = (v) => T + ph - (v / yMax) * ph;
+  const short = (v) => (v >= 1000 ? `${(v / 1000).toLocaleString('es-ES', { maximumFractionDigits: 1 })}k` : Math.round(v)) + ' €';
+
+  let svg = '';
+  for (let v = 0; v <= yMax + 0.01; v += step) {
+    svg += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ytick" x="${L - 6}" y="${y(v) + 3}">${short(v)}</text>`;
+  }
+  days.forEach((k, i) => {
+    const h = (inc[i] / yMax) * ph;
+    if (h > 0) {
+      const w = Math.min(14, bw - 6), x0 = x(i) - w / 2, y0 = T + ph - h, r = Math.min(3, h);
+      svg += `<path class="bar" d="M${x0},${T + ph}V${y0 + r}Q${x0},${y0} ${x0 + r},${y0}H${x0 + w - r}Q${x0 + w},${y0} ${x0 + w},${y0 + r}V${T + ph}Z"/>`;
+    }
+    const wd = WEEKDAY[new Date(k + 'T12:00').getDay()];
+    svg += `<text class="xtick ${k === today ? 'now' : ''}" x="${x(i)}" y="${H - 6}">${wd}</text>`;
+  });
+  const pts = need.map((v, i) => (v == null ? null : `${x(i)},${y(v)}`)).filter(Boolean);
+  if (pts.length) {
+    svg += `<polyline class="need-line" points="${pts.join(' ')}"/>`;
+    const last = need.length - 1;
+    if (need[last] != null) svg += `<circle class="need-dot" cx="${x(last)}" cy="${y(need[last])}" r="4"/>`;
+  }
+  days.forEach((k, i) => { svg += `<rect class="hit" data-i="${i}" x="${L + bw * i}" y="${T}" width="${bw}" height="${ph + B}"/>`; });
+  $('#chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ingresado cada día frente a lo necesario">${svg}</svg>`;
+  $('#chart').dataset.days = JSON.stringify(days.map((k, i) => [k, inc[i], need[i]]));
+  showTip(days.length - 1);
+}
+
+function showTip(i) {
+  const [k, got, need] = JSON.parse($('#chart').dataset.days)[i];
+  document.querySelectorAll('#chart .hit').forEach((h) => h.classList.toggle('on', Number(h.dataset.i) === i));
+  const label = dayLabel(k);
+  $('#chartTip').innerHTML = `<b>${esc(label)}</b> · Ingresado <b class="got">${eur(got)}</b>${need != null
+    ? ` · Necesario <b class="need">${eur(Math.ceil(need))}</b> ${got >= Math.ceil(need) ? '✅' : ''}` : ''}`;
+}
+
+function render() { renderHome(); renderTasks(); renderFocus(); renderHistory(); renderMoney(); }
 
 /* ---------- Avisos ---------- */
 let toastTimer;
@@ -457,6 +533,10 @@ $('#moods').addEventListener('click', (e) => {
   S.log[k] = { ...S.log[k], mood: S.log[k] && S.log[k].mood === m ? null : m };
   save(); renderFocus(); renderHistory();
 });
+['pointerover', 'click'].forEach((ev) => $('#chart').addEventListener(ev, (e) => {
+  const h = e.target.closest('.hit');
+  if (h) showTip(Number(h.dataset.i));
+}));
 $('#doneWrap').addEventListener('toggle', (e) => { doneOpen = e.target.open; }, true);
 
 /* ---------- Clics generales ---------- */
